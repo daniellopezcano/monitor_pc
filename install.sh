@@ -12,11 +12,16 @@ read -p "Enter your sender email address: " EMAIL_SENDER
 read -p "Enter your app password (e.g., from Gmail App Passwords): " EMAIL_PASSWORD
 read -p "Enter the recipient email address: " EMAIL_RECEIVER
 
-# Step 3: Prompt user for thresholds
+# Step 3: Prompt user for thresholds with default values
 echo "Configuring alert thresholds..."
-read -p "Enter the temperature threshold (°C): " TEMPERATURE_THRESHOLD_C
-read -p "Enter the memory usage threshold (%): " MEMORY_THRESHOLD_PERCENTAGE
-read -p "Enter the disk space threshold (% free): " DISK_THRESHOLD_PERCENTAGE
+read -p "Enter the temperature threshold (°C) [default: 80]: " TEMPERATURE_THRESHOLD_C
+TEMPERATURE_THRESHOLD_C=${TEMPERATURE_THRESHOLD_C:-80}
+
+read -p "Enter the memory usage threshold (% used) [default: 90]: " MEMORY_THRESHOLD_PERCENTAGE
+MEMORY_THRESHOLD_PERCENTAGE=${MEMORY_THRESHOLD_PERCENTAGE:-90}
+
+read -p "Enter the disk space threshold (% free) [default: 10]: " DISK_THRESHOLD_PERCENTAGE
+DISK_THRESHOLD_PERCENTAGE=${DISK_THRESHOLD_PERCENTAGE:-10}
 
 # Step 4: Save configuration to a JSON file
 CONFIG_FILE="monitoring/config.json"
