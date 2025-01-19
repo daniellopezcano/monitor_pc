@@ -8,11 +8,10 @@ import ssl
 from monitoring import get_sensors_output
 from datetime import datetime, timedelta
 
-# Step 2: Configure email settings
-EMAIL_SENDER = "daniellopezcano13@gmail.com"
 # Load configuration from config.json
-CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
+import json
 
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
 with open(CONFIG_FILE, "r") as f:
     config = json.load(f)
 
@@ -21,20 +20,22 @@ EMAIL_SENDER = config["EMAIL_SENDER"]
 EMAIL_PASSWORD = config["EMAIL_PASSWORD"]
 EMAIL_RECEIVER = config["EMAIL_RECEIVER"]
 
-# Step 3: Define thresholds
-TEMPERATURE_THRESHOLD_C = config["THRESHOLDS"]["TEMPERATURE_C"]
+# Thresholds
 MEMORY_THRESHOLD_PERCENTAGE = config["THRESHOLDS"]["MEMORY_PERCENT"]
+TEMPERATURE_THRESHOLD_C = config["THRESHOLDS"]["TEMPERATURE_C"]
 
-# Step 4: Set cooldown times
+# Cooldown times
 MEMORY_ALERT_COOLDOWN = timedelta(hours=1)
 SENSOR_ALERT_COOLDOWN = timedelta(hours=1)
 
-# Step 5: Initialize variables for alert timestamps
+# Alert timestamps
 last_memory_alert = None
 last_sensor_alert = None
 
-# Step 6: Define the email sending function
-def send_email(subject, body):
+# Email sending function
+def send_email(subject, body, verbose=False):
+    if verbose:
+        print(f"Sending email with subject: {subject}")
     em = EmailMessage()
     em["From"] = EMAIL_SENDER
     em["To"] = EMAIL_RECEIVER
@@ -45,68 +46,77 @@ def send_email(subject, body):
     with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
         smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
         smtp.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, em.as_string())
-        print(f"Email sent: {subject}")
+    if verbose:
+        print("Email sent successfully!")
 
-# Step 7: Extract temperatures from sensors output
-def parse_sensors_output(sensors_output):
-    """
-    Extract temperatures from the sensors output.
-    Returns a list of tuples: [(sensor_name, temperature), ...].
-    """
+# Function to parse sensor output
+def parse_sensors_output(sensors_output, verbose=False):
     high_temps = []
     for line in sensors_output.splitlines():
-        if "°C" in line:  # Look for lines with temperatures
+        if "°C" in line:
             parts = line.split()
             for part in parts:
                 if "°C" in part:
                     try:
                         temp = float(part.replace("°C", "").replace("+", ""))
                         high_temps.append((line, temp))
+                        if verbose:
+                            print(f"Found temperature: {line}")
                     except ValueError:
                         continue
     return high_temps
 
-# Step 8: Define the main function
-def main():
+# Main function
+def main(verbose=False):
     global last_memory_alert, last_sensor_alert
     now = datetime.now()
 
     # Memory Check
     if last_memory_alert is None or now - last_memory_alert > MEMORY_ALERT_COOLDOWN:
-        # Use psutil to get memory usage
         mem = psutil.virtual_memory()
         total_memory_gb = mem.total / 1e+9  # Convert to GB
         used_memory_gb = mem.used / 1e+9  # Convert to GB
-        used_memory_percentage = mem.percent  # Directly gives percentage used
+        used_memory_percentage = mem.percent
 
-        print(f"Total Memory: {total_memory_gb:.2f} GB")
-        print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
+        if verbose:
+            print(f"Total Memory: {total_memory_gb:.2f} GB")
+            print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
 
-        # Check if usage exceeds threshold
         if used_memory_percentage > MEMORY_THRESHOLD_PERCENTAGE:
             send_email(
                 "Memory Usage Alert",
                 f"High memory usage detected:\n"
                 f"Total Memory: {total_memory_gb:.2f} GB\n"
                 f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
-                f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%"
+                f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%",
+                verbose=verbose
             )
             last_memory_alert = now
 
     # Sensor Check
     if last_sensor_alert is None or now - last_sensor_alert > SENSOR_ALERT_COOLDOWN:
         sensors_output = get_sensors_output()
-        high_temps = parse_sensors_output(sensors_output)
-        # Filter temperatures that exceed the threshold
+        high_temps = parse_sensors_output(sensors_output, verbose=verbose)
         alert_temps = [(sensor, temp) for sensor, temp in high_temps if temp > TEMPERATURE_THRESHOLD_C]
 
         if alert_temps:
             alert_message = "\n".join([f"{sensor}: {temp}°C" for sensor, temp in alert_temps])
             send_email(
                 "Temperature Alert",
-                f"High temperature detected:\n{alert_message}"
+                f"High temperature detected:\n"
+                f"Threshold: {TEMPERATURE_THRESHOLD_C}°C\n"
+                f"Details:\n{alert_message}",
+                verbose=verbose
             )
             last_sensor_alert = now
 
 if __name__ == "__main__":
-    main()
+    # Add verbose flag for testing
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Monitor RAM and Sensors.")
+    parser.add_argument("--verbose", action="store_true", help="Enable detailed output for testing.")
+    args = parser.parse_args()
+
+    main(verbose=args.verbose)
+

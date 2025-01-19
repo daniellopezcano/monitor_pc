@@ -1,4 +1,3 @@
-
 # Monitoring System
 
 A Python-based system for monitoring memory usage, disk space, and hardware temperatures, with automatic email notifications for alerts.
@@ -21,8 +20,8 @@ Follow these steps to ensure that the monitoring system works as expected after 
 First, clone the GitHub repository to your local machine:
 
 ```bash
-git clone https://github.com/your-username/monitoring-system.git
-cd monitoring-system
+git clone https://github.com/your-username/monitor_pc.git
+cd monitor_pc
 ```
 
 ---
@@ -32,7 +31,7 @@ cd monitoring-system
 Ensure the repository contains the following key files:
 
 ```plaintext
-monitoring-system/
+monitor_pc/
 ├── README.md
 ├── LICENSE
 ├── install.sh
@@ -49,7 +48,7 @@ monitoring-system/
 
 ---
 
-### 3. Install Dependencies
+### 3. Chack that you have installed all the required dependencies
 
 Install the required Python libraries listed in `requirements.txt`:
 
@@ -116,7 +115,7 @@ Expected output:
 Run the script to check RAM and sensor monitoring. If thresholds are exceeded, an email will be sent:
 
 ```bash
-python monitoring/monitor_ram_and_sensors.py
+python monitoring/monitor_ram_and_sensors.py --verbose
 ```
 
 Verify:
@@ -127,7 +126,7 @@ Verify:
 Run the script to check disk space usage. If thresholds are exceeded, an email will be sent:
 
 ```bash
-python monitoring/monitor_disk.py
+python monitoring/monitor_disk.py --verbose
 ```
 
 Verify:
@@ -147,8 +146,8 @@ crontab -l
 You should see entries similar to:
 
 ```plaintext
-* * * * * /usr/bin/python3 /path/to/monitoring-system/monitoring/monitor_ram_and_sensors.py
-0 0 * * * /usr/bin/python3 /path/to/monitoring-system/monitoring/monitor_disk.py
+* * * * * /usr/bin/python3 /path/to/monitor_pc/monitoring/monitor_ram_and_sensors.py
+0 0 * * * /usr/bin/python3 /path/to/monitor_pc/monitoring/monitor_disk.py
 ```
 
 ---
