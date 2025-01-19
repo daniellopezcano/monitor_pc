@@ -1,0 +1,6 @@
+psutil
+numpy
+smtplib
+ssl
+email
+
