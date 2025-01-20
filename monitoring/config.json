@@ -4,7 +4,7 @@
     "EMAIL_RECEIVER": "your-email@example.com",
     "THRESHOLDS": {
         "TEMPERATURE_C": 90,
-        "MEMORY_PERCENT": 40,
+        "MEMORY_PERCENT": 90,
         "DISK_PERCENT": 10
     },
     "DISK_MONITOR_DIR": "/home",
