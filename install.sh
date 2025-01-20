@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="config.json"
+CONFIG_FILE="./monitoring/config.json"
 
 echo "Configuring the monitoring system..."
 
@@ -31,7 +31,7 @@ read -p "Enter the maximum allowed size for the monitored directory (GB) (defaul
 DISK_MAX_SIZE_GB=${DISK_MAX_SIZE_GB:-$DISK_TOTAL_SIZE}
 
 # Write configuration to config.json
-cat <<EOF > $CONFIG_FILE
+cat <<EOF > "$CONFIG_FILE"
 {
     "EMAIL_SENDER": "$EMAIL_SENDER",
     "EMAIL_PASSWORD": "$EMAIL_PASSWORD",
@@ -57,8 +57,3 @@ CRON_CMD_2="0 0 * * * /usr/bin/python3 $(pwd)/monitoring/monitor_disk.py"
 (crontab -l 2>/dev/null; echo "$CRON_CMD_2") | crontab -
 
 echo "Cron jobs added successfully. Verify with 'crontab -l'."
-
-# Final message
-echo "Installation complete! The monitoring system is now active."
-echo "Alerts will be sent to the configured email address in case of issues."
-
