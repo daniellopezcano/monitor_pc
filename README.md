@@ -80,21 +80,6 @@ After running the installation script, validate the generated `config.json` file
 cat monitoring/config.json
 ```
 
-You should see something like this:
-
-```json
-{
-    "EMAIL_SENDER": "your-email@example.com",
-    "EMAIL_PASSWORD": "your-app-password",
-    "EMAIL_RECEIVER": "recipient@example.com",
-    "THRESHOLDS": {
-        "TEMPERATURE_C": 80,
-        "MEMORY_PERCENT": 90,
-        "DISK_PERCENT": 10
-    }
-}
-```
-
 ---
 
 ### 6. Test Individual Scripts
