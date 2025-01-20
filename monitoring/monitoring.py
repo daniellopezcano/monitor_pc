@@ -6,54 +6,38 @@ import smtplib
 from email.mime.text import MIMEText
 
 # --- MEMORY MONITORING ---
-def get_user_mem_footprint():
+def get_user_mem_footprint(verbose=False):
     """
-    Retrieves a summary of memory usage (RAM and virtual memory) for each user on the system.
-    Returns the summary as a string.
+    Retrieves a summary of memory usage (RAM and virtual memory) for all users with running processes.
     """
-    import pwd
-    # List all system users
-    all_users = [x[0] for x in pwd.getpwall()]
+    import subprocess
 
-    # Identify active users with running processes
-    active_users = []
-    for user in os.listdir('/home/'):
-        if user in all_users:
-            active_users.append(user)
+    # Use `ps` to list users with active processes
+    try:
+        output = subprocess.check_output(
+            "ps -eo user,rss,vsz --sort=user | awk '{rss[$1]+=$2; vmem[$1]+=$3} END {for (user in rss) print user, rss[user], vmem[user]}'",
+            shell=True,
+            text=True
+        )
+    except Exception as e:
+        if verbose:
+            print(f"Error fetching memory usage: {e}")
+        return [], [], []
 
-    # Create a temporary file with the list of active users
-    with open('.tmp-users', 'w') as f:
-        for user in active_users:
-            f.write(user + '\n')
-
-    # Command to retrieve memory usage per user
-    comm = """#!/bin/bash
-    (echo "user rss(Gb) vmem(Gb)";
-    for user in $(cat .tmp-users); do
-        echo $user $(ps -U $user --no-headers -o rss,vsz \
-        | awk '{rss+=$1/1048576; vmem+=$2/1048576} END{print rss" "vmem}')
-    done | sort -k3
-    ) | column -t > .tmp-mem-use
-    """
-    os.system(comm)
-
-    # Process the temporary file to create a detailed message
     names, rss, vmem = [], [], []
-    with open('.tmp-mem-use', 'r') as f:
-        for i, line in enumerate(f.readlines()):
-            if i == 0:  # Skip header
-                continue
-            columns = line.split()
-            if len(columns) >= 3:
-                names.append(columns[0])
-                rss.append(float(columns[1]))
-                vmem.append(float(columns[2]))
-
-    # Clean up temporary files
-    os.remove('.tmp-users')
-    os.remove('.tmp-mem-use')
+    for line in output.strip().split('\n'):
+        try:
+            user, user_rss, user_vmem = line.split()
+            names.append(user)
+            rss.append(float(user_rss) / 1e+6)  # Convert RSS to GB
+            vmem.append(float(user_vmem) / 1e+6)  # Convert VMEM to GB
+            if verbose:
+                print(f"User: {user}, RSS: {float(user_rss) / 1e+6:.2f} GB, VMEM: {float(user_vmem) / 1e+6:.2f} GB")
+        except ValueError:
+            continue  # Skip malformed lines
 
     return names, rss, vmem
+
 
 # --- SENSOR MONITORING ---
 def get_sensors_output():

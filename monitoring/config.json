@@ -1,11 +1,12 @@
 {
-    "EMAIL_SENDER": "user@example.com",
+    "EMAIL_SENDER": "your-email@example.com",
     "EMAIL_PASSWORD": "your-app-password",
-    "EMAIL_RECEIVER": "recipient@example.com",
+    "EMAIL_RECEIVER": "your-email@example.com",
     "THRESHOLDS": {
-        "TEMPERATURE_C": 80,
-        "MEMORY_PERCENT": 90,
+        "TEMPERATURE_C": 90,
+        "MEMORY_PERCENT": 40,
         "DISK_PERCENT": 10
-    }
+    },
+    "DISK_MONITOR_DIR": "/home",
+    "DISK_MAX_SIZE_GB": 1000
 }
-

@@ -5,7 +5,7 @@ import psutil  # Necesario para lecturas precisas de memoria
 from email.message import EmailMessage
 import smtplib
 import ssl
-from monitoring import get_sensors_output
+from monitoring import get_sensors_output, get_user_mem_footprint
 from datetime import datetime, timedelta
 
 # Load configuration from config.json
@@ -78,9 +78,21 @@ def main(verbose=False):
         used_memory_gb = mem.used / 1e+9  # Convert to GB
         used_memory_percentage = mem.percent
 
+        # Call get_user_mem_footprint to get detailed user memory usage
+        names, rss, vmem = get_user_mem_footprint(verbose=verbose)
+
+        # Sort users by RSS (descending)
+        sorted_users = sorted(zip(names, rss, vmem), key=lambda x: x[1], reverse=True)
+        user_summary = "\n".join(
+            [f"User: {user}, RSS: {user_rss:.2f} GB, VMEM: {user_vmem:.2f} GB"
+             for user, user_rss, user_vmem in sorted_users]
+        )
+
         if verbose:
             print(f"Total Memory: {total_memory_gb:.2f} GB")
             print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
+            print("User Memory Usage (sorted):")
+            print(user_summary)
 
         if used_memory_percentage > MEMORY_THRESHOLD_PERCENTAGE:
             send_email(
@@ -88,7 +100,8 @@ def main(verbose=False):
                 f"High memory usage detected:\n"
                 f"Total Memory: {total_memory_gb:.2f} GB\n"
                 f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
-                f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%",
+                f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%\n\n"
+                f"Detailed User Memory Usage (sorted):\n{user_summary}",
                 verbose=verbose
             )
             last_memory_alert = now
@@ -119,4 +132,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(verbose=args.verbose)
-

@@ -2,15 +2,13 @@
 
 import os
 import json
-import shutil  # For disk usage
+import shutil
 from email.message import EmailMessage
 import smtplib
 import ssl
-from monitoring import get_disk_usage  # Using the function defined in monitoring.py
 
 # Load configuration from config.json
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.json")
-
 with open(CONFIG_FILE, "r") as f:
     config = json.load(f)
 
@@ -19,8 +17,10 @@ EMAIL_SENDER = config["EMAIL_SENDER"]
 EMAIL_PASSWORD = config["EMAIL_PASSWORD"]
 EMAIL_RECEIVER = config["EMAIL_RECEIVER"]
 
-# Disk usage threshold
+# Disk settings
+DISK_MONITOR_DIR = config["DISK_MONITOR_DIR"]
 DISK_THRESHOLD_PERCENTAGE = config["THRESHOLDS"]["DISK_PERCENT"]
+DISK_MAX_SIZE_GB = config["DISK_MAX_SIZE_GB"]
 
 # Email sending function
 def send_email(subject, body, verbose=False):
@@ -39,72 +39,77 @@ def send_email(subject, body, verbose=False):
     if verbose:
         print("Email sent successfully!")
 
-# Analyze first-level subdirectory sizes
-def analyze_subdirectories_first_level(path="/home", max_entries=5, verbose=False):
-    """
-    Analyze the sizes of subdirectories at the first level of the given path.
-    Returns the top N directories consuming space.
-    """
-    subdirs = []
-    try:
-        for entry in os.scandir(path):
-            if entry.is_dir(follow_symlinks=False):
-                try:
-                    dir_size = sum(
-                        os.path.getsize(os.path.join(entry.path, file))
-                        for file in os.listdir(entry.path)
-                        if os.path.isfile(os.path.join(entry.path, file))
-                    )
-                    subdirs.append((entry.path, dir_size))
-                    if verbose:
-                        print(f"Directory: {entry.path}, Size: {dir_size / 1e+9:.2f} GB")
-                except Exception as e:
-                    if verbose:
-                        print(f"Error calculating size for {entry.path}: {e}")
-    except Exception as e:
-        if verbose:
-            print(f"Error accessing directory {path}: {e}")
+# Calculate the size of a directory (first-level subdirectories only)
+def calculate_directory_size_first_level(directory, verbose=False):
+    total_size = 0
+    subdirs_sizes = []
 
-    subdirs.sort(key=lambda x: x[1], reverse=True)
-    subdir_summary = "\n".join(
-        [f"{path}: {size / 1e+9:.2f} GB" for path, size in subdirs[:max_entries]]
-    )
-    return subdir_summary
-
-# Get disk usage for /home
-def get_home_disk_usage(verbose=False):
-    """
-    Retrieves the total, used, and free disk space for the /home partition.
-    """
-    total, used, free = shutil.disk_usage("/home")
     if verbose:
-        print(f"Disk Usage - Total: {total / 1e+9:.2f} GB, Used: {used / 1e+9:.2f} GB, Free: {free / 1e+9:.2f} GB")
-    return total, used, free
+        print(f"Analyzing subdirectories in: {directory}")
+
+    # Iterate over first-level subdirectories
+    try:
+        for entry in os.scandir(directory):
+            if entry.is_dir(follow_symlinks=False):
+                subdir_size = 0
+                for root, _, files in os.walk(entry.path):
+                    for f in files:
+                        fp = os.path.join(root, f)
+                        try:
+                            subdir_size += os.path.getsize(fp)
+                        except FileNotFoundError:
+                            if verbose:
+                                print(f"File not found: {fp}")
+                        except PermissionError:
+                            if verbose:
+                                print(f"Permission denied: {fp}")
+                        except Exception as e:
+                            if verbose:
+                                print(f"Error accessing {fp}: {e}")
+                subdirs_sizes.append((entry.path, subdir_size))
+                total_size += subdir_size
+                if verbose:
+                    print(f"Subdirectory: {entry.path}, Size: {subdir_size / 1e+9:.6f} GB")
+    except PermissionError as e:
+        if verbose:
+            print(f"Permission denied for directory: {directory}, Error: {e}")
+
+    return total_size, subdirs_sizes
 
 # Main function
 def main(verbose=False):
-    total, used, free = get_home_disk_usage(verbose=verbose)
-    used_percentage = (used / total) * 100
-    free_percentage = 100 - used_percentage
+    if verbose:
+        print(f"Monitoring directory: {DISK_MONITOR_DIR}")
 
-    disk_summary = (
-        f"Total disk space: {total / 1e+9:.2f} GB\n"
-        f"Used disk space: {used / 1e+9:.2f} GB ({used_percentage:.2f}%)\n"
-        f"Free disk space: {free / 1e+9:.2f} GB ({free_percentage:.2f}%)\n"
-    )
+    # Calculate the size of the monitored directory (first-level subdirectories only)
+    dir_size_bytes, subdirs_sizes = calculate_directory_size_first_level(DISK_MONITOR_DIR, verbose=verbose)
+    dir_size_gb = dir_size_bytes / 1e+9
+
+    # Calculate percentage of the maximum allowed size
+    used_percentage = (dir_size_gb / DISK_MAX_SIZE_GB) * 100
 
     if verbose:
-        print("Disk Usage Summary:")
-        print(disk_summary)
+        print(f"Directory: {DISK_MONITOR_DIR}")
+        print(f"Directory Size: {dir_size_gb:.6f} GB")
+        print(f"Max Allowed Size: {DISK_MAX_SIZE_GB:.2f} GB")
+        print(f"Used Percentage: {used_percentage:.2f}%")
 
-    if free_percentage < DISK_THRESHOLD_PERCENTAGE:
+    # Prepare summary of subdirectories
+    subdirs_summary = "\n".join(
+        [f"{path}: {size / 1e+9:.6f} GB" for path, size in sorted(subdirs_sizes, key=lambda x: x[1], reverse=True)]
+    )
+
+    # Check if usage exceeds thresholds
+    if used_percentage > DISK_THRESHOLD_PERCENTAGE:
         if verbose:
             print("Disk usage threshold exceeded.")
-        subdir_summary = analyze_subdirectories_first_level("/home", max_entries=5, verbose=verbose)
         send_email(
             "Disk Space Alert",
-            f"Low disk space detected on /home:\n\n{disk_summary}\n\n"
-            f"Top directories consuming space:\n{subdir_summary}",
+            f"Low disk space detected in directory {DISK_MONITOR_DIR}:\n\n"
+            f"Directory Size: {dir_size_gb:.2f} GB\n"
+            f"Max Allowed Size: {DISK_MAX_SIZE_GB:.2f} GB\n"
+            f"Used Percentage: {used_percentage:.2f}%\n\n"
+            f"Top-level Subdirectories:\n{subdirs_summary}",
             verbose=verbose
         )
     else:
@@ -120,4 +125,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(verbose=args.verbose)
-
