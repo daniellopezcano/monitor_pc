@@ -72,47 +72,48 @@ def main(verbose=False):
     now = datetime.now()
 
     # Memory Check
-    if last_memory_alert is None or now - last_memory_alert > MEMORY_ALERT_COOLDOWN:
-        mem = psutil.virtual_memory()
-        total_memory_gb = mem.total / 1e+9  # Convert to GB
-        used_memory_gb = mem.used / 1e+9  # Convert to GB
-        used_memory_percentage = mem.percent
+# Memory Check
+if last_memory_alert is None or now - last_memory_alert > MEMORY_ALERT_COOLDOWN:
+    mem = psutil.virtual_memory()
+    total_memory_gb = mem.total / 1e+9  # Convert to GB
+    used_memory_gb = mem.used / 1e+9  # Convert to GB
+    used_memory_percentage = mem.percent
 
-        # Call get_user_mem_footprint to get detailed user memory usage
-        names, rss, vmem = get_user_mem_footprint(verbose=verbose)
+    # Call get_user_mem_footprint to get detailed user memory usage
+    names, rss, vmem = get_user_mem_footprint(verbose=verbose)
 
-        # Calculate RSS percentage for each user
-        user_rss_percentages = [
-            (user, rss_val, (rss_val / total_memory_gb) * 100)
-            for user, rss_val in zip(names, rss)
+    # Calculate RSS percentage for each user and include VMEM
+    user_rss_percentages = [
+        (user, rss_val, vmem_val, (rss_val / total_memory_gb) * 100)
+        for user, rss_val, vmem_val in zip(names, rss, vmem)
+    ]
+
+    # Sort users by RSS (descending)
+    sorted_users = sorted(user_rss_percentages, key=lambda x: x[1], reverse=True)
+    user_summary = "\n".join(
+        [
+            f"User: {user}, RSS: {user_rss:.2f} GB ({rss_percentage:.2f}%), VMEM: {user_vmem:.2f} GB"
+            for user, user_rss, user_vmem, rss_percentage in sorted_users
         ]
+    )
 
-        # Sort users by RSS (descending)
-        sorted_users = sorted(user_rss_percentages, key=lambda x: x[1], reverse=True)
-        user_summary = "\n".join(
-            [
-                f"User: {user}, RSS: {user_rss:.2f} GB ({rss_percentage:.2f}%), VMEM: {user_vmem:.2f} GB"
-                for user, user_rss, rss_percentage in sorted_users
-            ]
+    if verbose:
+        print(f"Total Memory: {total_memory_gb:.2f} GB")
+        print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
+        print("User Memory Usage (sorted):")
+        print(user_summary)
+
+    if used_memory_percentage > MEMORY_THRESHOLD_PERCENTAGE:
+        send_email(
+            "Memory Usage Alert",
+            f"High memory usage detected:\n"
+            f"Total Memory: {total_memory_gb:.2f} GB\n"
+            f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
+            f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%\n\n"
+            f"Detailed User Memory Usage (sorted):\n{user_summary}",
+            verbose=verbose,
         )
-
-        if verbose:
-            print(f"Total Memory: {total_memory_gb:.2f} GB")
-            print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
-            print("User Memory Usage (sorted):")
-            print(user_summary)
-
-        if used_memory_percentage > MEMORY_THRESHOLD_PERCENTAGE:
-            send_email(
-                "Memory Usage Alert",
-                f"High memory usage detected:\n"
-                f"Total Memory: {total_memory_gb:.2f} GB\n"
-                f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
-                f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%\n\n"
-                f"Detailed User Memory Usage (sorted):\n{user_summary}",
-                verbose=verbose,
-            )
-            last_memory_alert = now
+        last_memory_alert = now
 
     # Sensor Check
     if last_sensor_alert is None or now - last_sensor_alert > SENSOR_ALERT_COOLDOWN:
