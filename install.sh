@@ -16,8 +16,8 @@ TEMPERATURE_THRESHOLD_C=${TEMPERATURE_THRESHOLD_C:-80}
 read -p "Enter the memory usage threshold (%) (default: 90): " MEMORY_THRESHOLD_PERCENTAGE
 MEMORY_THRESHOLD_PERCENTAGE=${MEMORY_THRESHOLD_PERCENTAGE:-90}
 
-read -p "Enter the disk usage threshold (%) (default: 10): " DISK_THRESHOLD_PERCENTAGE
-DISK_THRESHOLD_PERCENTAGE=${DISK_THRESHOLD_PERCENTAGE:-10}
+read -p "Enter the disk usage threshold (%) (default: 90): " DISK_THRESHOLD_PERCENTAGE
+DISK_THRESHOLD_PERCENTAGE=${DISK_THRESHOLD_PERCENTAGE:-90}
 
 # Prompt for disk monitoring settings
 read -p "Enter the directory to monitor for disk usage (default: /home): " DISK_MONITOR_DIR
