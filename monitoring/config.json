@@ -5,7 +5,7 @@
     "THRESHOLDS": {
         "TEMPERATURE_C": 80,
         "MEMORY_PERCENT": 90,
-        "DISK_PERCENT": 10
+        "DISK_PERCENT": 90
     },
     "DISK_MONITOR_DIR": "/home",
     "DISK_MAX_SIZE_GB": 1000
