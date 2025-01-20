@@ -81,11 +81,19 @@ def main(verbose=False):
         # Call get_user_mem_footprint to get detailed user memory usage
         names, rss, vmem = get_user_mem_footprint(verbose=verbose)
 
+        # Calculate RSS percentage for each user
+        user_rss_percentages = [
+            (user, rss_val, (rss_val / total_memory_gb) * 100)
+            for user, rss_val in zip(names, rss)
+        ]
+
         # Sort users by RSS (descending)
-        sorted_users = sorted(zip(names, rss, vmem), key=lambda x: x[1], reverse=True)
+        sorted_users = sorted(user_rss_percentages, key=lambda x: x[1], reverse=True)
         user_summary = "\n".join(
-            [f"User: {user}, RSS: {user_rss:.2f} GB, VMEM: {user_vmem:.2f} GB"
-             for user, user_rss, user_vmem in sorted_users]
+            [
+                f"User: {user}, RSS: {user_rss:.2f} GB ({rss_percentage:.2f}%), VMEM: {user_vmem:.2f} GB"
+                for user, user_rss, rss_percentage in sorted_users
+            ]
         )
 
         if verbose:
@@ -102,7 +110,7 @@ def main(verbose=False):
                 f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
                 f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%\n\n"
                 f"Detailed User Memory Usage (sorted):\n{user_summary}",
-                verbose=verbose
+                verbose=verbose,
             )
             last_memory_alert = now
 
@@ -119,7 +127,7 @@ def main(verbose=False):
                 f"High temperature detected:\n"
                 f"Threshold: {TEMPERATURE_THRESHOLD_C}°C\n"
                 f"Details:\n{alert_message}",
-                verbose=verbose
+                verbose=verbose,
             )
             last_sensor_alert = now
 
