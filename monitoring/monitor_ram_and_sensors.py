@@ -88,6 +88,7 @@ def main(verbose=False):
 
         # Sort users by RSS (descending)
         sorted_users = sorted(user_rss_percentages, key=lambda x: x[1], reverse=True)
+        total_rss = sum(rss for _, rss, _, _ in sorted_users)
         user_summary = "\n".join(
             [
                 f"User: {user}, RSS: {user_rss:.2f} GB ({rss_percentage:.2f}%), VMEM: {user_vmem:.2f} GB"
@@ -98,6 +99,7 @@ def main(verbose=False):
         if verbose:
             print(f"Total Memory: {total_memory_gb:.2f} GB")
             print(f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)")
+            print(f"Total RSS (sum of all users): {total_rss:.2f} GB")
             print("User Memory Usage (sorted):")
             print(user_summary)
 
@@ -108,6 +110,7 @@ def main(verbose=False):
                 f"Total Memory: {total_memory_gb:.2f} GB\n"
                 f"Used Memory: {used_memory_gb:.2f} GB ({used_memory_percentage:.2f}%)\n"
                 f"Threshold: {MEMORY_THRESHOLD_PERCENTAGE}%\n\n"
+                f"Total RSS (sum of all users): {total_rss:.2f} GB\n"
                 f"Detailed User Memory Usage (sorted):\n{user_summary}",
                 verbose=verbose,
             )
